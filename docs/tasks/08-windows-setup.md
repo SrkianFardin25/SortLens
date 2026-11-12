@@ -1,5 +1,5 @@
 # Task 08: Windows one-command setup
-Status: review (done when the `windows-setup` CI job is green)
+Status: done
 Roadmap line: `One-command setup (Windows first)`
 
 ## Why
@@ -18,4 +18,4 @@ An installer (.exe/.msi), auto-update, the UI.
 
 ## Done when
 - [x] `setup.ps1` parses (PowerShell 7 parser), `doctor` tests pass on Linux
-- [ ] `windows-setup` CI job green (setup + launcher + all tests on real Windows)
+- [x] `windows-setup` CI job green (setup + launcher + all tests on real Windows)

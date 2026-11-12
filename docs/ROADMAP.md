@@ -11,7 +11,7 @@
 - [x] Exact + near duplicates, Takeout album copies, `-edited` pairs (lists only, keep suggested), `sortlens dupes`
 - [x] Live progress (SSE) + resumable batches: `/api/jobs` start / status / stop, `/api/jobs/{id}/events`
 - [x] Review + approve/undo (plans with full list + confirm code; trash = move to the location's `SortLens Trash`, never delete; move a solo list into a folder; undo log + undo)
-- [ ] One-command setup (Windows first)
+- [x] One-command setup (Windows first)
 
 - [ ] Local UI (built last, after the backend is complete)
 
