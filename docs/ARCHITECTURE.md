@@ -25,7 +25,7 @@ Takeout zips / folder ──► importer ──► MediaRecord ──► pipelin
 ## Duplicates
 - `app/pipeline/dupes.py` (`sortlens dupes`): writes `dup_runs`, `dup_groups` (kind `exact` | `near` | `album_copy` | `edited`) and `dup_items` (role `keep` | `extra`). No file action.
 - exact: SHA-256, computed only for files whose size matches another file. near: 64-bit pHash, BK-tree search, distance ≤ 6 bits by default (not tuned on real photos yet); each exact group counts once; every member is compared with the cluster's keep photo, so groups do not chain.
-- Suggested keep: not an album copy > more pixels > real date (not file time) > bigger file > first imported.
+- Suggested keep: not an album copy > more pixels > a loose file over one inside a zip > real date (not file time) > bigger file > first imported. `-edited` files are left out of near matching.
 - `edited` pairs keep both. Trash, failed videos and live-photo video halves are skipped.
 - Hash cache `file_hashes` (per file, by size + mtime + hash version) makes runs resumable; one unreadable file is logged and skipped.
 

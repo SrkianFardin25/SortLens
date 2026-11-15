@@ -1,70 +1,75 @@
 # SortLens
 
-Local-first, offline photo organizer. Point it at a **Google Takeout** export or any **laptop folder**, and it sorts your photos by date, finds duplicates, and collects photos where you are alone, while a local web page shows live progress.
+Local-first, offline photo organizer. Point it at a **Google Takeout** export or any **laptop folder**. It sorts your photos by date, finds duplicates, and lists photos where one person is alone. Everything runs on your own computer, on the CPU, with no internet after setup.
 
-> **Safety promise:** SortLens never deletes or moves your photos on its own. It only categorizes. Any move or delete happens only after it shows you the full list and you say yes, and every action can be undone.
+> **Safety promise:** SortLens never deletes anything. Scans only read your files and write lists to a local database. A file moves only after SortLens shows you the full list and you confirm it with a code. "Delete" means "move into a `SortLens Trash` folder" that only you can empty. Every move can be undone.
 
 ## Status
-Early development (v0.1 skeleton). See `docs/ROADMAP.md`.
+v1 backend: done and checked end to end on generated test data (48 tests, CI on Linux and Windows).
+Not done yet: the local web UI, and a test on a real Takeout export. See [`docs/ROADMAP.md`](docs/ROADMAP.md).
+Today you use SortLens from the command line (`sortlens ...`) or its local API.
+
+## What it does
+| Feature | Command | Moves files? |
+|---|---|---|
+| Read a Google Takeout export (zips or extracted folder) with all its metadata | `import-takeout` | No |
+| Read any laptop folder | `import-folder` | No |
+| Best "taken at" date for every photo | `dates` | No |
+| Duplicates: exact, look-alike, album copies, `-edited` pairs | `dupes` | No |
+| Photos where one person is alone (from one reference photo) | `solo` | No |
+| Live progress, stop and resume | local API + SSE | No |
+| Review: move duplicates to `SortLens Trash`, move a solo list to a folder, undo | `plan-*`, `apply`, `undo` | Only after your yes |
 
 ## Runs on
-Windows / Linux / macOS, CPU only (built and tested for a 12th-gen i3 laptop, no GPU), fully offline.
+Windows 11 (main target: a 12th-gen i3 laptop, no GPU). Linux works (CI tests it). macOS should work but is untested.
+Python 3.12. About 40 MB of face models are downloaded once.
 
-## Setup on Windows (one command)
+## Install on Windows (one command)
 Download or clone this repo, open PowerShell in its folder, then:
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\setup.ps1
-# options: -DataDir "D:\SortLens Data"   -NoFaces (skip the solo list)   -Dev (test tools)
 .\sortlens.cmd doctor        # READY means all good
-.\sortlens.cmd import-takeout "D:\Takeout\takeout-001.zip"
 ```
-It installs uv and Python 3.12 if missing, installs pinned versions from `backend/uv.lock`, downloads the face models (~39 MB) and runs `doctor`. Safe to run again. It never touches your photos.
+Options: `-DataDir "D:\SortLens Data"` (where the database lives), `-NoFaces` (skip the solo feature), `-Dev` (test tools).
+Setup installs uv and Python 3.12 if missing, installs pinned versions from `backend/uv.lock`, downloads the face models and runs `doctor`. Safe to run again. It never touches your photos.
 
-## Quick start (dev)
+## Install on Linux / macOS
 ```bash
 cd backend
-uv venv && uv pip install -e ".[dev]"
-uv run sortlens serve        # http://127.0.0.1:8765/api/health
+uv sync --locked --extra faces      # needs uv: https://docs.astral.sh/uv/
+uv run sortlens models download
+uv run sortlens doctor
 ```
-Import photos (read-only, safe to re-run; it resumes):
-```bash
-uv run sortlens import-takeout takeout-001.zip takeout-002.zip   # or an extracted Takeout folder
-uv run sortlens import-folder "D:/Photos"
-uv run sortlens stats
-uv run sortlens dupes     # duplicate lists, then: sortlens dupes-show 1
-uv run sortlens dates     # best taken-at date per file: Takeout > EXIF > file name > file time
-```
-Solo list: photos where one person is alone (reads only; nothing is moved):
-```bash
-uv pip install -e ".[faces]"            # OpenCV, CPU only
-uv run sortlens models download         # two small ONNX face models, once (~39 MB, SHA-256 checked)
-uv run sortlens solo "Fardin" --photo me.jpg      # add --tagged-only to check only Takeout tags
-uv run sortlens solo-show 1 --bucket solo         # solo | group | check
-```
-Local API (`sortlens serve`, 127.0.0.1 only): start a long step and watch it live.
-```text
-POST /api/jobs   {"kind": "import_takeout", "params": {"paths": ["D:/takeout-001.zip"]}}
-                 kinds: import_takeout | import_folder | dates | dupes | solo
-GET  /api/jobs/{id}/events   live progress (Server-Sent Events), ends with an `end` event
-POST /api/jobs/{id}/stop     stops at the next batch; run again to resume
-```
-Review (the only way a file moves; nothing is ever deleted):
-```bash
-uv run sortlens plan-trash-dupes 1          # duplicate extras -> SortLens Trash (a plan, nothing moves)
-uv run sortlens plan-move-solo 2 --to "Fardin akela"
-uv run sortlens plan-show 3                 # full list + confirm code
-uv run sortlens apply 3 --code <code>       # then, if needed: sortlens undo 3 --code <code>
-```
-API: `POST /api/plans`, `GET /api/plans/{id}`, `POST /api/plans/{id}/apply|undo` with `{"code": ...}`.
 
+## First run in 5 steps
+```powershell
+.\sortlens.cmd import-takeout "D:\Takeout\takeout-001.zip" "D:\Takeout\takeout-002.zip"
+.\sortlens.cmd dates
+.\sortlens.cmd dupes                    # prints a run number, e.g. 1
+.\sortlens.cmd plan-trash-dupes 1       # a plan: nothing moves yet
+.\sortlens.cmd plan-show 1              # read the full list and the confirm code
+```
+Only if the list is right: `.\sortlens.cmd apply 1 --code <code>`. Changed your mind: `.\sortlens.cmd undo 1 --code <code>`.
+(On Linux / macOS use `uv run sortlens` instead of `.\sortlens.cmd`.)
 
-## Docs
-- `docs/ARCHITECTURE.md` how it works
-- `docs/SAFETY.md` the no-delete rule in detail
-- `docs/TAKEOUT.md` Google Takeout format notes
-- `docs/ROADMAP.md` what is done and what is next
-- `AGENTS.md` rules for coding agents (Claude Code reads `CLAUDE.md`, Cursor reads `.cursor/rules/`, both point to it)
-- `docs/tasks/` the work queue, one file per task
+The full walk-through, from exporting your Google Photos to undoing a move, is in the **[User guide](docs/USER_GUIDE.md)**.
 
-## Working with a coding agent
-Give the agent one task: "Read `AGENTS.md`, then do `docs/tasks/NN-name.md`." It must pass `scripts/check.sh` (Windows: `scripts\check.ps1`) and work on `dev`.
+## Documentation
+| Doc | For |
+|---|---|
+| [User guide](docs/USER_GUIDE.md) | Step by step use, settings, troubleshooting, FAQ |
+| [Command reference](docs/CLI.md) | Every command and option |
+| [API reference](docs/API.md) | The local HTTP API and live progress (for the coming UI or your own scripts) |
+| [Safety](docs/SAFETY.md) | The no-delete rules and how the code enforces them |
+| [Google Takeout notes](docs/TAKEOUT.md) | How Takeout exports are laid out and how SortLens reads them |
+| [Architecture](docs/ARCHITECTURE.md) | How the pieces fit, database tables, each pipeline step |
+| [Roadmap](docs/ROADMAP.md) | Done and next |
+| [Contributing](CONTRIBUTING.md) | Dev setup, checks, branches, task files |
+| [`docs/tasks/`](docs/tasks/README.md) | The work queue, one file per task |
+| [`AGENTS.md`](AGENTS.md) | Rules for coding agents (Claude Code, Cursor) |
+
+## Privacy
+No account, no cloud, no telemetry. The API listens on `127.0.0.1` only. Your photos are never copied; the database stores paths, dates, hashes and face numbers (embeddings) in your data folder.
+
+## License
+Not chosen yet. Until a license file is added, all rights are reserved by the author.

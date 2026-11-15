@@ -1,6 +1,6 @@
 # Roadmap
 
-## v0.1 (now): skeleton
+## v0.1: skeleton
 - [x] Repo layout, settings, safety gate + undo log, health API, tests, CI
 
 ## v1
@@ -12,6 +12,10 @@
 - [x] Live progress (SSE) + resumable batches: `/api/jobs` start / status / stop, `/api/jobs/{id}/events`
 - [x] Review + approve/undo (plans with full list + confirm code; trash = move to the location's `SortLens Trash`, never delete; move a solo list into a folder; undo log + undo)
 - [x] One-command setup (Windows first)
+- [x] End-to-end check on generated data + fixes (Task 09)
+- [x] Full documentation: README, user guide, command and API reference, contributing
+
+- [ ] Real Google Takeout test on the target laptop
 
 - [ ] Local UI (built last, after the backend is complete)
 
