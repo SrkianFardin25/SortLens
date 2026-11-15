@@ -71,5 +71,8 @@ The full walk-through, from exporting your Google Photos to undoing a move, is i
 ## Privacy
 No account, no cloud, no telemetry. The API listens on `127.0.0.1` only. Your photos are never copied; the database stores paths, dates, hashes and face numbers (embeddings) in your data folder.
 
+## Contributing
+Contributions are welcome: bug reports, ideas, docs and code. Start with [CONTRIBUTING.md](CONTRIBUTING.md). Please follow the [code of conduct](CODE_OF_CONDUCT.md), and report security or data-loss problems privately ([SECURITY.md](SECURITY.md)).
+
 ## License
-Not chosen yet. Until a license file is added, all rights are reserved by the author.
+[MIT](LICENSE) © 2026 Shaikh Fardin
