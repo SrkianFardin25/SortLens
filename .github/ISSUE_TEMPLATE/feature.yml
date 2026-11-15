@@ -1,0 +1,19 @@
+name: Feature idea
+description: Suggest something SortLens should do
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes: {label: What problem does it solve?}
+    validations: {required: true}
+  - type: textarea
+    id: idea
+    attributes: {label: Your idea}
+    validations: {required: true}
+  - type: checkboxes
+    id: rules
+    attributes:
+      label: Safety rules
+      options:
+        - label: It works offline on a CPU laptop and never deletes or moves files without a plan the user approves
+          required: true
