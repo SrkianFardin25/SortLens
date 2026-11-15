@@ -15,8 +15,9 @@ One file per task, numbered in build order. A coding agent gets exactly one task
 | 06 | [Live progress (jobs + SSE)](06-live-progress.md) | done |
 | 07 | [Review + undo](07-review-undo.md) | done |
 | 08 | [Windows one-command setup](08-windows-setup.md) | done |
+| 09 | [Fixes from the end-to-end check](09-e2e-fixes.md) | done |
 
-After 08 the v1 backend is complete. Next: the real Takeout test, then the UI (each gets a task file when its turn comes).
+After 09 the v1 backend is complete and checked end to end on generated data. Next: the real Takeout test, then the UI (each gets a task file when its turn comes).
 
 ## Template for a new task
 ```markdown

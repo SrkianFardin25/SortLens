@@ -168,3 +168,38 @@ def test_cross_drive_is_refused(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
         safety.move_file(f, tmp_path / "T" / "a.jpg", approval=safety.Approval(1, "c"),
                          log_path=tmp_path / "u", note={})  # fmt: skip
     assert f.exists()
+
+
+def test_plan_show_lists_the_json_that_moves_too(tmp_path: Path, monkeypatch, capsys) -> None:
+    """The full list must show every file that will move, sidecar JSON included."""
+    from app.cli import main
+    from app.core.config import settings
+
+    t = tmp_path / "Takeout"
+    y = t / "Google Photos" / "Photos from 2024"
+    y.mkdir(parents=True)
+    (y / "p.jpg").write_bytes(b"p")
+    (y / "p.jpg.json").write_text(
+        json.dumps({"title": "p.jpg", "photoTakenTime": {"timestamp": "1"}})
+    )
+    monkeypatch.setattr(settings, "data_dir", tmp_path / "data")
+    assert main(["import-takeout", str(t)]) == 0
+    con = store.connect(settings.db_path)
+    pid = plans.create(con, _ids(con, "p.jpg"), kind="trash")
+    capsys.readouterr()
+    assert main(["plan-show", str(pid)]) == 0
+    out = capsys.readouterr().out
+    assert "+ json" in out and "p.jpg.json" in out and TRASH in out
+
+
+def test_solo_says_models_missing_not_install(tmp_path: Path, monkeypatch, capsys) -> None:
+    pytest.importorskip("cv2")
+    from app.cli import main
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "data_dir", tmp_path / "data")
+    ref = tmp_path / "me.jpg"
+    ref.write_bytes(b"x")
+    assert main(["solo", "Me", "--photo", str(ref)]) == 2
+    err = capsys.readouterr().err
+    assert "models download" in err and "pip install" not in err

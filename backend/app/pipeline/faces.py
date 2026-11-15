@@ -129,6 +129,10 @@ class OpenCVEngine:
                 f"face models missing in {models_dir}; run `sortlens models download`"
             )
         self._cv2 = cv2
+        try:  # OpenCV 5 prints backend notices on every model load; keep errors only
+            cv2.utils.logging.setLogLevel(cv2.utils.logging.LOG_LEVEL_ERROR)
+        except AttributeError:
+            pass
         self._det = cv2.FaceDetectorYN.create(
             str(models_dir / MODELS["detector"][0]), "", (320, 320), min_score
         )

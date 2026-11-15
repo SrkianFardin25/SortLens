@@ -82,7 +82,9 @@ def test_groups(tmp_path: Path) -> None:
         1,
         4,
     )
-    assert c["extra_bytes"] == len(picture(1)) + 10000
+    # every extra counts: exact copies, the near small copy and the album copy
+    small = (d / "b_small.jpg").stat().st_size
+    assert c["extra_bytes"] == len(picture(1)) + 10000 + small + len(picture(4))
     # sizes that match nothing are never fully hashed
     sha = dict(con.execute(
         "SELECT m.name, h.sha256 FROM file_hashes h JOIN media m ON m.id=h.media_id"))  # fmt: skip
@@ -106,3 +108,39 @@ def test_near_threshold() -> None:
         t.add(v, i)
     assert sorted(t.near(0b1, 2)) == [(0, 1), (1, 2)]
     assert list(t.near(0xFFFF, 0)) == [(2, 0)]
+
+
+def test_edit_never_makes_its_original_an_extra(tmp_path: Path) -> None:
+    """Found in the end-to-end check: a lightly edited copy looked 'near' its original."""
+    z = tmp_path / "takeout-001.zip"
+    y = "Takeout/Google Photos/Photos from 2024"
+    with zipfile.ZipFile(z, "w") as w:
+        w.writestr(f"{y}/p.jpg", picture(7, 512))
+        w.writestr(f"{y}/p-edited.jpg", picture(7, 600, quality=70))  # same look, bigger
+    con = store.connect(tmp_path / "s.db")
+    store.import_records(con, scan_takeout([z]), source="takeout", root=str(tmp_path))
+    res = dupes.run(con)
+    kinds = [g["kind"] for g in dupes.groups(con, res.run_id)]
+    assert kinds == ["edited"]
+    assert res.counts["extra_files"] == 0
+
+
+def test_loose_file_kept_over_zip_copy_and_bytes_counted(tmp_path: Path) -> None:
+    d = tmp_path / "laptop"
+    d.mkdir()
+    a = picture(8)
+    (d / "a.jpg").write_bytes(a)
+    (d / "b.jpg").write_bytes(picture(9, 512))
+    small = picture(9, 200, quality=60)
+    (d / "b_small.jpg").write_bytes(small)
+    z = tmp_path / "takeout-001.zip"
+    with zipfile.ZipFile(z, "w") as w:
+        w.writestr("Takeout/Google Photos/Photos from 2024/a.jpg", a)
+    con = store.connect(tmp_path / "s.db")
+    store.import_records(con, scan_takeout([z]), source="takeout", root=str(tmp_path))
+    store.import_records(con, scan_folder(d), source="folder", root=str(d))
+    res = dupes.run(con)
+    exact = [g for g in dupes.groups(con, res.run_id) if g["kind"] == "exact"]
+    roles = {(bool(f["container"]), f["role"]) for f in exact[0]["files"]}
+    assert roles == {(False, "keep"), (True, "extra")}  # laptop file kept, zip copy extra
+    assert res.counts["extra_bytes"] == len(a) + len(small)  # exact + near both counted

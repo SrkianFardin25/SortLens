@@ -4,6 +4,7 @@ Kinds of group:
   exact       same bytes (SHA-256). Only files whose size matches another file are hashed.
   near        photos that look the same (64-bit perceptual hash, Hamming distance <= threshold):
               resized, re-saved, WhatsApp copies, burst shots. Each exact group counts once.
+              "-edited" files are left out, so an original is never an extra of its own edit.
   album_copy  Takeout album folder copy of a photo in "Photos from YYYY" (found by the importer).
   edited      Google Photos "-edited" file next to its original. Both are worth keeping.
 
@@ -225,11 +226,12 @@ class _BKTree:
 
 
 def _keep_order(r: Row, px: int) -> tuple[int, ...]:
-    """Lower is better: from 'Photos from YYYY' not an album copy, bigger picture, real date,
-    bigger file, older id."""
+    """Lower is better: from 'Photos from YYYY' not an album copy, bigger picture, a loose file
+    (laptop or extracted) over one inside a zip, real date, bigger file, older id."""
     return (
         int(bool(r.album_copy_of)),
         -px,
+        int(bool(r.container)),
         int(r.taken_at_source in ("", "file")),
         -r.size,
         r.id,
@@ -270,6 +272,7 @@ def run(
         )
     }
     byid = {r.id: r for r in rows}
+    size_of = {r.id: r.size for r in _rows(con)}
     px = lambda i: info.get(i, ("", "", 0))[2]  # noqa: E731
     order = lambda i: _keep_order(byid[i], px(i))  # noqa: E731
 
@@ -294,6 +297,7 @@ def run(
         counts[kind] += 1
         if extra:
             counts["extra_files"] += len(others)
+            counts["extra_bytes"] += sum(size_of.get(m, 0) for m, _ in others)
 
     # exact
     by_sha: dict[str, list[int]] = defaultdict(list)
@@ -306,7 +310,6 @@ def run(
         if len(ids) > 1:
             ids.sort(key=order)
             group("exact", ids[0], [(m, None) for m in ids[1:]], True)
-            counts["extra_bytes"] += sum(byid[m].size for m in ids[1:])
             for m in ids[1:]:
                 rep_of[m] = ids[0]
 
@@ -314,7 +317,7 @@ def run(
     if near:
         photos = sorted(
             (i for i, r in byid.items() if r.kind == "photo" and i not in rep_of
-             and info.get(i, ("", ""))[1]),
+             and not r.is_edited and info.get(i, ("", ""))[1]),
             key=order,
         )  # fmt: skip
         tree = _BKTree()

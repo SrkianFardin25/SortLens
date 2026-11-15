@@ -52,9 +52,12 @@ def _solo(con: sqlite3.Connection, args: argparse.Namespace) -> int:
         return 2
     try:
         engine = OpenCVEngine(settings.models_dir)
-    except (ImportError, FileNotFoundError) as e:
-        print(f"{e}\n(install: pip install 'sortlens[faces]'; then: sortlens models download)",
-              file=sys.stderr)  # fmt: skip
+    except ImportError:
+        print("face support is not installed: run setup again without -NoFaces "
+              "(or: pip install 'sortlens[faces]')", file=sys.stderr)  # fmt: skip
+        return 2
+    except FileNotFoundError as e:
+        print(e, file=sys.stderr)
         return 2
 
     def prog(c: dict[str, int]) -> None:
@@ -215,6 +218,8 @@ def main(argv: list[str] | None = None) -> int:
             to = f"  ->  {it['dst']}" if it["dst"] else ""
             note = f"   [{it['note']}]" if it["note"] else ""
             print(f"  {it['action']:<5} {it['status']:<8} {where}{to}{note}")
+            if it["sidecar_src"]:
+                print(f"        + json   {it['sidecar_src']}  ->  {it['sidecar_dst']}")
         print(f"Counts: {json.dumps(plan['counts'])}")
         if plan["status"] in ("ready", "partial"):
             print(f"To do it: sortlens apply {plan['id']} --code {plan['code']}")
